@@ -17,6 +17,10 @@ public class BaseDatabaseTest {
 		public String myMethod() {
 			return "Welcome";
 		}
+
+		@Override public String getDatabaseUnitName() {
+			return "default";
+		}
 	}
 
 }

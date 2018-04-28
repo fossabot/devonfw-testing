@@ -11,21 +11,19 @@ import com.capgemini.ntc.test.core.base.environment.IEnvironmentService;
 import com.capgemini.ntc.test.core.base.properties.PropertiesSettingsModule;
 import com.capgemini.ntc.test.core.logger.BFLogger;
 import com.google.inject.Guice;
-import lombok.AccessLevel;
 import lombok.Getter;
 import ru.yandex.qatools.allure.annotations.Attachment;
 
 import javax.persistence.EntityManager;
 
-@Getter(AccessLevel.PROTECTED)
-abstract public class BaseDatabase implements ITestObserver {
+abstract public class BaseDatabase implements ITestObserver, IDatabasePrefixHolder {
 
 	private final static PropertiesFileSettings propertiesFileSettings;
 	private static       IEnvironmentService    environmentService;
 	private final static IAnalytics             analytics;
 
-	protected String        dbPrefix      = "default";
-	protected EntityManager entityManager = null;
+	@Getter
+	protected EntityManager entityManager    = null;
 
 	public final static String analyticsCategoryName = "Database-Module";
 
@@ -60,8 +58,7 @@ abstract public class BaseDatabase implements ITestObserver {
 	public void onTestFailure() {
 		BFLogger.logDebug("BasePage.onTestFailure    " + this.getClass()
 				.getSimpleName());
-		makeScreenshotOnFailure();
-		makeSourcePageOnFailure();
+		closeSession();
 	}
 
 	@Override
@@ -82,22 +79,12 @@ abstract public class BaseDatabase implements ITestObserver {
 	@Override
 	public void onTestClassFinish() {
 		closeSession();
-		BFLogger.logDebug("Session for connection: [" + dbPrefix + "] closed.");
+		BFLogger.logDebug("Session for connection: [" + getDatabaseUnitName() + "] closed.");
 	}
 
 	@Override
 	public ModuleType getModuleType() {
 		return ModuleType.DATABASE;
-	}
-
-	@Attachment("Screenshot on failure")
-	public String makeScreenshotOnFailure() {
-		return "";
-	}
-
-	@Attachment("Source Page on failure")
-	public String makeSourcePageOnFailure() {
-		return "";
 	}
 
 	private static PropertiesFileSettings setPropertiesSettings() {
@@ -115,12 +102,14 @@ abstract public class BaseDatabase implements ITestObserver {
 	}
 
 	private void closeSession() {
-
+		if (entityManager != null) {
+			entityManager.close();
+		}
 	}
 
 	private void assignEntityManager() {
-		if (entityManager != null) {
-			this.entityManager = DriverManager.createEntityManager(this.dbPrefix);
+		if (entityManager == null) {
+			this.entityManager = DriverManager.createEntityManager(getDatabaseUnitName());
 		}
 	}
 
